@@ -1,47 +1,28 @@
 <?php
-// Start the session
 session_start();
 
-// Check if the user is logged in
+// Check if user is logged in
 if (!isset($_SESSION['username'])) {
-    // Redirect the user to the login page if not logged in
-    header("Location: Users/login.php");
+    header("Location: login.php");
     exit();
 }
 
-// Include database connection
-include '../db_connection.php';
+// Include necessary files
+include_once("../controller/ChatController.php");
+include_once("../model/UserModel.php");
 
-// Get the username from the session
-$username = $_SESSION['username'];
+// Create instances of ChatController and UserModel
+$chatController = new ChatController();
+$userModel = new UserModel('localhost', 'root', '', 'assignment');
 
-// Update user's status to "online" in the database
-$update_online_status = mysqli_query($conn, "UPDATE users SET status='online' WHERE username='$username'");
+// Handle form submission to send messages
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["message"])) {
+    $message = $_POST["message"];
+    $username = $_SESSION['username'];
 
-// Fetch online users from the database
-$online_users_query = mysqli_query($conn, "SELECT username FROM users WHERE status='online'");
-$online_users = [];
-while ($row = mysqli_fetch_assoc($online_users_query)) {
-    $online_users[] = $row['username'];
+    // Send message
+    $chatController->sendMessage($username, $message);
 }
-
-// Check if the message form is submitted
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // Check if the message field is not empty
-    if (!empty($_POST['message'])) {
-        // Sanitize the message
-        $message = htmlspecialchars($_POST['message']);
-        
-        // Add the message to the message log file
-        $file = 'messages.txt';
-        $current = file_get_contents($file);
-        $current .= "<div class='message'><span class='sender'>$username:</span> $message</div>";
-        file_put_contents($file, $current);
-    }
-}
-
-// Read the message log file
-$message_log = file_get_contents('messages.txt');
 ?>
 
 <!DOCTYPE html>
@@ -95,7 +76,7 @@ $message_log = file_get_contents('messages.txt');
 
         .message-container {
             margin-top: 20px;
-            max-height: 300px;
+            height: 300px;
             overflow-y: auto;
         }
 
@@ -132,6 +113,7 @@ $message_log = file_get_contents('messages.txt');
         .profile {
             text-align: right;
             padding-right: 20px;
+            margin-top: 2px;
         }
 
         .text-input {
@@ -143,7 +125,7 @@ $message_log = file_get_contents('messages.txt');
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 5px;
-            width: 100%;
+            width: 60%;
             box-sizing: border-box;
             margin-bottom: 10px;
             font-size: 16px;
@@ -192,14 +174,41 @@ $message_log = file_get_contents('messages.txt');
     </style>
 </head>
 <body>
+    <!-- <div class="container">
+        <h1>Welcome to the Dashboard, <?php echo $_SESSION['username']; ?>!</h1>
+        <p>Status: Online</p>
 
-<!-- Navbar -->
-<div class="navbar">
+        <div>
+            <h2>Send a Message</h2>
+            <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
+                <textarea name="message" rows="4" placeholder="Type your message here" required></textarea>
+                <br>
+                <button type="submit">Send</button>
+            </form>
+        </div>
+
+        <hr>
+
+        <h2>Chat History</h2>
+        <div class="chat-history">
+            <?php
+            // Display chat history
+            $chatHistory = $chatController->getChatHistory();
+            echo nl2br($chatHistory);
+            ?>
+        </div>
+    </div> -->
+
+    <div class="navbar">
     <a href="#">Home</a>
     <!-- <a href="#">Online Users</a> -->
-    <a href="../Users/logout.php">Logout</a>
+    <a href="logout.php" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Logout</a>
+<form id="logout-form" action="logout.php" method="post" style="display: none;">
+    <input type="hidden" name="logout" value="Logout">
+</form>
+
     <div class="profile">
-        <div class="username"><?php echo $username; ?></div>
+        <div class="username"><?php echo $_SESSION['username']; ?>!</div>
         <div class="online-status">Online</div>
     </div>
 </div>
@@ -207,36 +216,38 @@ $message_log = file_get_contents('messages.txt');
 <div class="container">
     <!-- Section to display messages -->
     <div class="message-container">
-        <?php echo $message_log; ?>
+       <?php
+            // Display chat history
+            $chatHistory = $chatController->getChatHistory();
+            echo nl2br($chatHistory);
+            ?>
     </div>
     <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
         <input type="text" name="message" placeholder="Type your message here..." required>
         <input type="submit" value="Send">
     </form>
     <!-- Display online users -->
-    <h3>Online Users</h3>
-    <ul>
-        <?php foreach ($online_users as $user): ?>
-            <li><?php echo ($user == $username) ? "You" : $user; ?></li>
-        <?php endforeach; ?>
-    </ul>
+    <!-- <h3>Online Users</h3> -->
+    <?php include 'online_users.php'; ?>
 </div>
-
-<script>
-    // Function to scroll to the bottom of the message container
-    function scrollToBottom() {
-        var messageContainer = document.querySelector('.message-container');
-        messageContainer.scrollTop = messageContainer.scrollHeight;
-    }
-
-    // Call the scrollToBottom function on page load
-    window.onload = scrollToBottom;
-
-    // Call the scrollToBottom function after submitting a message
-    document.querySelector('form').addEventListener('submit', function() {
-        scrollToBottom();
-    });
-</script>
 
 </body>
 </html>
+
+<script>
+document.getElementById("logoutLink").addEventListener("click", function(event) {
+    event.preventDefault(); // Prevent default link behavior
+
+    // Make an AJAX request to the logout endpoint
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+            // Redirect to the login page after successful logout
+            window.location.href = "login.php";
+        }
+    };
+    xhttp.open("POST", "../controller/LogoutController.php", true);
+    xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+    xhttp.send();
+});
+</script>

@@ -1,3 +1,44 @@
+<?php
+// Include necessary files
+include_once("../controller/RegisterController.php");
+include_once("../model/UserModel.php");
+
+// Database connection details
+$host = 'localhost';
+$dbUsername = 'root';
+$dbPassword = '';
+$database = 'assignment';
+
+// Create instance of RegisterController with database connection details
+$registerController = new RegisterController($host, $dbUsername, $dbPassword, $database);
+
+// Handle form submission
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Check if the username and password fields are set
+    if (isset($_POST["username"]) && isset($_POST["password"])) {
+        $username = $_POST["username"];
+        $password = $_POST["password"];
+
+        // Register user
+        if ($registerController->registerUser($username, $password)) {
+            // Start the session
+            session_start();
+            // Set session variable
+            $_SESSION['username'] = $username;
+            // Redirect user to the dashboard upon successful registration
+            header("Location: dashboard.php");
+            exit();
+        } else {
+            // Display error message for unsuccessful registration
+            echo "Registration failed. Please try again.";
+        }
+    } else {
+        // Handle case where username or password fields are not set
+        echo "Username and password fields are required.";
+    }
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -51,57 +92,18 @@
 </head>
 <body>
 
-<?php
-// Initialize variables to store success and error messages
-$successMessage = '';
-$errorMessage = '';
-
-// Check if form is submitted
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // Include database connection
-    include '../db_connection.php';
-
-    // Sanitize form inputs
-    $username = mysqli_real_escape_string($conn, $_POST['username']);
-    $password = mysqli_real_escape_string($conn, $_POST['password']);
-
-    // Hash the password
-    $password_hashed = password_hash($password, PASSWORD_DEFAULT);
-
-    // Check if the username is already taken
-    $check_username_query = "SELECT * FROM users WHERE username='$username'";
-    $check_username_result = mysqli_query($conn, $check_username_query);
-    if (mysqli_num_rows($check_username_result) > 0) {
-        $errorMessage = 'Username is already taken.';
-    } else {
-        // Insert user into database
-        $sql = "INSERT INTO users (username, password) VALUES ('$username', '$password_hashed')";
-        if (mysqli_query($conn, $sql)) {
-            $successMessage = 'Signup successful!';
-            header("Location: ../Dashboard/home.php");
-        } else {
-            $errorMessage = 'Error: ' . $sql . '<br>' . mysqli_error($conn);
-        }
-    }
-    mysqli_close($conn);
-}
-?>
-
+<!-- Your HTML content for registration page -->
 <div class="image-container"></div>
 
 <div>
     <h2 class="center">Signup</h2>
     <form class="center" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
         <input type="text" name="username" placeholder="Username" required><br>
-        <!-- Display username error -->
-        <span style="color: red;"><?php echo $errorMessage; ?></span><br>
         <input type="password" name="password" placeholder="Password" required><br>
-        <!-- Display success or error message -->
-        <!-- <span style="color: <?php echo $successMessage ? 'green' : 'red'; ?>"><?php echo $successMessage ? $successMessage : $errorMessage; ?></span><br> -->
         <input type="submit" value="Signup">
-         <div class="center">
-        <p>Already have an account? <a href="login.php">Login here</a></p>
-    </div>
+        <div class="center">
+            <p>Already have an account? <a href="login.php">Login here</a></p>
+        </div>
     </form>
 </div>
 </body>
