@@ -1,13 +1,19 @@
 <?php
 class Database {
-    private $host = 'localhost';
-    private $username = 'root';
-    private $password = '';
-    private $database = 'assignment';
+    private $host;
+    private $username;
+    private $password;
+    private $database;
 
     protected $connection;
 
-    public function __construct() {
+    public function __construct($host, $username, $password, $database) {
+        // Set database connection details
+        $this->host = $host;
+        $this->username = $username;
+        $this->password = $password;
+        $this->database = $database;
+
         // Create connection
         $this->connection = new mysqli($this->host, $this->username, $this->password, $this->database);
 
@@ -15,6 +21,11 @@ class Database {
         if ($this->connection->connect_error) {
             die("Connection failed: " . $this->connection->connect_error);
         }
+    }
+
+    // Getter method for the connection property
+    public function getConnection() {
+        return $this->connection;
     }
 
     public function executeQuery($query) {

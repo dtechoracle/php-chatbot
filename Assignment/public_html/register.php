@@ -1,43 +1,60 @@
 <?php
-// Include necessary files
-include_once("../controller/RegisterController.php");
-include_once("../model/UserModel.php");
+session_start();
 
-// Database connection details
-$host = 'localhost';
-$dbUsername = 'root';
-$dbPassword = '';
-$database = 'assignment';
+// Check if session variables for database connection details are set
+if (isset($_SESSION['host'], $_SESSION['dbUsername'], $_SESSION['dbPassword'], $_SESSION['database'])) {
+    // Include necessary files
+    include_once("../controller/RegisterController.php");
+    include_once("../model/UserModel.php");
+    include_once("../model/Database.php");
 
-// Create instance of RegisterController with database connection details
-$registerController = new RegisterController($host, $dbUsername, $dbPassword, $database);
+    // Retrieve database connection details from session
+    $host = $_SESSION['host'];
+    $dbUsername = $_SESSION['dbUsername'];
+    $dbPassword = $_SESSION['dbPassword'];
+    $databaseName = $_SESSION['database'];
 
-// Handle form submission
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // Check if the username and password fields are set
-    if (isset($_POST["username"]) && isset($_POST["password"])) {
-        $username = $_POST["username"];
-        $password = $_POST["password"];
+    // Create a Database object with connection details
+    $database = new Database($host, $dbUsername, $dbPassword, $databaseName);
 
-        // Register user
-        if ($registerController->registerUser($username, $password)) {
-            // Start the session
-            session_start();
-            // Set session variable
-            $_SESSION['username'] = $username;
-            // Redirect user to the dashboard upon successful registration
-            header("Location: dashboard.php");
-            exit();
+    // Initialize error variables
+    $usernameError = '';
+    $passwordError = '';
+
+    // Create instance of RegisterController with the Database object
+    $registerController = new RegisterController($database);
+
+    // Handle form submission
+    if ($_SERVER["REQUEST_METHOD"] == "POST") {
+        // Check if the username and password fields are set
+        if (isset($_POST["username"]) && isset($_POST["password"])) {
+            $username = $_POST["username"];
+            $password = $_POST["password"];
+
+            // Register user
+            if ($registerController->registerUser($username, $password)) {
+                // Start the session
+                session_start();
+                // Set session variable
+                $_SESSION['username'] = $username;
+                // Redirect user to the dashboard upon successful registration
+                header("Location: login.php");
+                exit();
+            } else {
+                // Display error message for unsuccessful registration
+                echo "Registration failed. Please try again.";
+            }
         } else {
-            // Display error message for unsuccessful registration
-            echo "Registration failed. Please try again.";
+            // Handle case where username or password fields are not set
+            echo "Username and password fields are required.";
         }
-    } else {
-        // Handle case where username or password fields are not set
-        echo "Username and password fields are required.";
     }
+} else {
+    echo "Database connection details not set. Please run the installation script.";
 }
 ?>
+
+
 
 <!DOCTYPE html>
 <html lang="en">

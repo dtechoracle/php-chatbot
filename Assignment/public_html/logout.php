@@ -1,33 +1,41 @@
 <?php
-// logout.php
+session_start();
 
 // Include necessary files
 include_once("../controller/LogoutController.php");
-include_once("../model/UserModel.php");
+include_once("../model/Database.php");
 
-// Database connection details
-$host = 'localhost';
-$dbUsername = 'root';
-$dbPassword = '';
-$database = 'assignment';
+// Check if session variables for database connection details are set
+if (isset($_SESSION['host'], $_SESSION['dbUsername'], $_SESSION['dbPassword'], $_SESSION['database'])) {
+    // Retrieve database connection details from session
+    $host = $_SESSION['host'];
+    $dbUsername = $_SESSION['dbUsername'];
+    $dbPassword = $_SESSION['dbPassword'];
+    $databaseName = $_SESSION['database'];
 
-// Create instance of LogoutController with database connection details
-$logoutController = new LogoutController($host, $dbUsername, $dbPassword, $database);
+    // Create a Database instance using session details
+    $database = new Database($host, $dbUsername, $dbPassword, $databaseName);
 
-// Handle logout logic
-if (isset($_POST["logout"])) {
-    // Get username from session
-    session_start();
-    $username = $_SESSION['username'] ?? null;
+    // Create an instance of LogoutController with the Database instance
+    $logoutController = new LogoutController($database);
 
-    // If username exists, update user status to "offline" in the database
-    if ($username) {
-        $logoutController->updateUserStatus($username, 'offline');
+    // Handle logout logic
+    if (isset($_POST["logout"])) {
+        // Get username from session
+        $username = $_SESSION['username'] ?? null;
+        if ($username) {
+            // Update user status to "offline" in the database
+            $logoutController->updateUserStatus($username, 'offline');
+        }
+        // Unset the username session variable (keep other session variables)
+        unset($_SESSION['username']);
+        // Redirect to the login page
+        header("Location: login.php");
+        exit();
     }
-
-    // Destroy the session and redirect to the login page
-    session_destroy();
-    header("Location: login.php");
+} else {
+    // Handle case where database connection details are not set in the session
+    echo "Database connection details not set. Please run the installation script.";
     exit();
 }
 ?>

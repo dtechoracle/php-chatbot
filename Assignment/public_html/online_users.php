@@ -1,28 +1,40 @@
 <?php
-// Include the OnlineUserController
+// session_start();
+
+// Include necessary files
 include_once("../controller/OnlineUserController.php");
+include_once("../model/Database.php");
 
-// Database connection details
-$host = 'localhost';
-$dbUsername = 'root';
-$dbPassword = '';
-$database = 'assignment';
+// Check if session variables for database connection details are set
+if (isset($_SESSION['host'], $_SESSION['dbUsername'], $_SESSION['dbPassword'], $_SESSION['database'])) {
+    // Retrieve database connection details from session
+    $host = $_SESSION['host'];
+    $dbUsername = $_SESSION['dbUsername'];
+    $dbPassword = $_SESSION['dbPassword'];
+    $databaseName = $_SESSION['database'];
 
-// Create instance of OnlineUserController with database connection details
-$onlineUserController = new OnlineUserController($host, $dbUsername, $dbPassword, $database);
+    // Create a Database instance using session details
+    $database = new Database($host, $dbUsername, $dbPassword, $databaseName);
 
-// Get online users from the controller
-$onlineUsers = $onlineUserController->getOnlineUsers();
+    // Create an instance of OnlineUserController with the Database instance
+    $onlineUserController = new OnlineUserController($database);
 
-// Display online users
-if (!empty($onlineUsers)) {
-    echo "<h2>Online Users</h2>";
-    echo "<ul>";
-    foreach ($onlineUsers as $user) {
-        echo "<li>$user</li>";
+    // Get online users
+    $onlineUsers = $onlineUserController->getOnlineUsers();
+
+    // Display online users
+    if (!empty($onlineUsers)) {
+        echo "<h3>Online Users</h3>";
+        echo "<ul>";
+        foreach ($onlineUsers as $user) {
+            echo "<li>$user</li>";
+        }
+        echo "</ul>";
+    } else {
+        echo "No online users.";
     }
-    echo "</ul>";
 } else {
-    echo "No users are currently online.";
+    // Handle case where database connection details are not set in the session
+    echo "Database connection details not set. Please run the installation script.";
 }
 ?>

@@ -4,9 +4,9 @@ include_once("../model/OnlineUserModel.php");
 class OnlineUserController {
     private $onlineUserModel;
 
-    public function __construct($host, $username, $password, $database) {
-        // Initialize OnlineUserModel
-        $this->onlineUserModel = new OnlineUserModel($host, $username, $password, $database);
+    public function __construct(Database $database) {
+        // Initialize OnlineUserModel with the Database instance
+        $this->onlineUserModel = new OnlineUserModel($database);
     }
 
     public function getOnlineUsers() {

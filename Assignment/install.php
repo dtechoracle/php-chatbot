@@ -1,56 +1,101 @@
 <?php
+session_start();
+
+// Initialize error messages array
+$errors = [
+    'host' => '',
+    'username' => '',
+    'password' => '',
+    'database' => ''
+];
+
 // Check if the form is submitted
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Database connection details
-    $host = 'localhost';
-    $dbUsername = 'root';
-    $dbPassword = '';
+    $host = $_POST['host'];
+    $dbUsername = $_POST['username'];
+    $dbPassword = $_POST['password'];
+    $database = $_POST['database'];
+
+    // Validate host
+    if (empty($host)) {
+        $errors['host'] = "Host is required";
+    }
+
+    // Validate username
+    if (empty($dbUsername)) {
+        $errors['username'] = "Username is required";
+    }
 
     // Create database named 'assignment'
     $conn = new mysqli($host, $dbUsername, $dbPassword);
     if ($conn->connect_error) {
+        $errors['password'] = "Connection failed: " . $conn->connect_error;
+    } else {
+        $sql = "CREATE DATABASE IF NOT EXISTS $database";
+        if ($conn->query($sql) === TRUE) {
+            $_SESSION['host'] = $host;
+            $_SESSION['dbUsername'] = $dbUsername;
+            $_SESSION['dbPassword'] = $dbPassword;
+            $_SESSION['database'] = $database;
+
+            // Database created successfully
+            $dbMessage = "Database created successfully<br>";
+
+            // Create tables
+            createTables($host, $dbUsername, $dbPassword, $database);
+
+            // Redirect to login page
+            header("Location: ./public_html/login.php");
+            exit;
+        } else {
+            $errors['database'] = "Error creating database: " . $conn->error;
+        }
+
+        // Close the database connection
+        $conn->close();
+    }
+}
+
+// Function to create tables
+function createTables($host, $dbUsername, $dbPassword, $database) {
+    $conn = new mysqli($host, $dbUsername, $dbPassword, $database);
+    if ($conn->connect_error) {
         die("Connection failed: " . $conn->connect_error);
     }
 
-    $sql = "CREATE DATABASE IF NOT EXISTS assignment";
+    // Create 'users' table
+    $sql = "CREATE TABLE IF NOT EXISTS users (
+        id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        username VARCHAR(50) NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        status VARCHAR(10) DEFAULT 'offline'
+    )";
     if ($conn->query($sql) === TRUE) {
-        $dbMessage = "Database created successfully<br>";
+        // Table 'users' created successfully
+        $tableMessage = "Table 'users' created successfully<br>";
 
-        // Switch to the 'assignment' database
-        mysqli_select_db($conn, 'assignment');
+        // Insert a sample user into the 'users' table
+        $name = "sample";
+        $password = password_hash("password123", PASSWORD_DEFAULT); // Hash the password
+        $status = "online";
 
-        // Create 'users' table
-        $sql = "CREATE TABLE IF NOT EXISTS users (
-            id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            name VARCHAR(50) NOT NULL,
-            password VARCHAR(255) NOT NULL,
-            status VARCHAR(10) DEFAULT 'offline'
-        )";
+        $sql = "INSERT INTO users (username, password, status) VALUES ('$name', '$password', '$status')";
         if ($conn->query($sql) === TRUE) {
-            $tableMessage = "Table 'users' created successfully<br>";
-
-            // Insert a sample user into the 'users' table
-            $name = "sample";
-            $password = password_hash("password123", PASSWORD_DEFAULT); // Hash the password
-            $status = "online";
-
-            $sql = "INSERT INTO users (name, password, status) VALUES ('$name', '$password', '$status')";
-            if ($conn->query($sql) === TRUE) {
-                $sampleUserMessage = "Sample user inserted successfully<br>";
-            } else {
-                $sampleUserMessage = "Error inserting sample user: " . $conn->error;
-            }
+            // Sample user inserted successfully
+            $sampleUserMessage = "Sample user inserted successfully<br>";
         } else {
-            $tableMessage = "Error creating table: " . $conn->error;
+            $errors['database'] = "Error inserting sample user: " . $conn->error;
         }
     } else {
-        $dbMessage = "Error creating database: " . $conn->error;
+        $errors['database'] = "Error creating table: " . $conn->error;
     }
 
     // Close the database connection
     $conn->close();
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -85,41 +130,67 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             margin-bottom: 20px;
         }
 
-        button {
+        form {
+            text-align: center;
+        }
+
+        label {
             display: block;
-            margin: 0 auto;
+            margin-bottom: 5px;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        button {
+            display: inline-block;
             padding: 10px 20px;
             background-color: #4CAF50;
             color: #fff;
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            font-size: 16px;
         }
 
         button:hover {
             background-color: #45a049;
+        }
+
+        .error {
+            color: red;
+            text-align: center;
+            margin-top: -10px;
+            margin-bottom: 5px;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Installation</h1>
-        <p>Click the button below to perform the installation tasks:</p>
+        <p>Enter your database connection details below:</p>
         <form method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
+            <label for="host">Host:</label>
+            <input type="text" id="host" name="host" value="<?php echo isset($_POST['host']) ? $_POST['host'] : ''; ?>" required>
+            <span class="error"><?php echo $errors['host']; ?></span><br>
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" value="<?php echo isset($_POST['username']) ? $_POST['username'] : ''; ?>" required>
+            <span class="error"><?php echo $errors['username']; ?></span><br>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password">
+            <span class="error"><?php echo $errors['password']; ?></span><br>
+            <label for="database">Database Name:</label>
+            <input type="text" id="database" name="database" value="<?php echo isset($_POST['database']) ? $_POST['database'] : ''; ?>" required>
+            <span class="error"><?php echo $errors['database']; ?></span><br>
             <button type="submit">Install</button>
         </form>
-        <?php
-        // Display installation messages
-        if (isset($dbMessage)) {
-            echo "<p>$dbMessage</p>";
-        }
-        if (isset($tableMessage)) {
-            echo "<p>$tableMessage</p>";
-        }
-        if (isset($sampleUserMessage)) {
-            echo "<p>$sampleUserMessage</p>";
-        }
-        ?>
     </div>
 </body>
 </html>

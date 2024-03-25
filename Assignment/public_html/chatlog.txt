@@ -9,3 +9,7 @@ temi: hello
 jerry: hmm
 dtechoracle: test
 dtechoracle: Another one
+dtechoracle: Test
+dtechoracle: Hello there
+sample: hm
+james: test

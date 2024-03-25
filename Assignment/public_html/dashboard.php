@@ -10,20 +10,38 @@ if (!isset($_SESSION['username'])) {
 // Include necessary files
 include_once("../controller/ChatController.php");
 include_once("../model/UserModel.php");
+include_once("../model/Database.php");
 
-// Create instances of ChatController and UserModel
-$chatController = new ChatController();
-$userModel = new UserModel('localhost', 'root', '', 'assignment');
+// Check if session variables for database connection details are set
+if (isset($_SESSION['host'], $_SESSION['dbUsername'], $_SESSION['dbPassword'], $_SESSION['database'])) {
+    // Retrieve database connection details from session
+    $host = $_SESSION['host'];
+    $dbUsername = $_SESSION['dbUsername'];
+    $dbPassword = $_SESSION['dbPassword'];
+    $databaseName = $_SESSION['database'];
 
-// Handle form submission to send messages
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["message"])) {
-    $message = $_POST["message"];
-    $username = $_SESSION['username'];
+    // Create a Database instance using session details
+    $database = new Database($host, $dbUsername, $dbPassword, $databaseName);
 
-    // Send message
-    $chatController->sendMessage($username, $message);
+    // Create instances of ChatController and UserModel
+    $chatController = new ChatController();
+    $userModel = new UserModel($database); // Pass the Database instance
+
+    // Handle form submission to send messages
+    if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["message"])) {
+        $message = $_POST["message"];
+        $username = $_SESSION['username'];
+
+        // Send message
+        $chatController->sendMessage($username, $message);
+    }
+} else {
+    // Handle case where database connection details are not set in the session
+    echo "Database connection details not set. Please run the installation script.";
+    exit();
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">

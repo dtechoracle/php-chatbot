@@ -1,67 +1,79 @@
 <?php
-// Include necessary files
-include_once("../controller/LoginController.php");
-include_once("../controller/LogoutController.php");
-include_once("../model/UserModel.php");
+session_start();
 
-// Database connection details
-$host = 'localhost';
-$dbUsername = 'root';
-$dbPassword = '';
-$database = 'assignment';
+// Check if session variables for database connection details are set
+if (isset($_SESSION['host'], $_SESSION['dbUsername'], $_SESSION['dbPassword'], $_SESSION['database'])) {
+    // Database connection details
+    $host = $_SESSION['host'] ?? '';
+    $dbUsername = $_SESSION['dbUsername'] ?? '';
+    $dbPassword = $_SESSION['dbPassword'] ?? '';
+    $databaseName = $_SESSION['database'] ?? '';
 
-// Initialize error variables
-$usernameError = '';
-$passwordError = '';
+    // Include necessary files
+    require_once('../model/Database.php');
+    include_once("../model/UserModel.php");
+    include_once("../controller/LoginController.php");
+    include_once("../controller/LogoutController.php");
 
-// Create instances of LoginController and LogoutController with database connection details
-$loginController = new LoginController($host, $dbUsername, $dbPassword, $database);
-$logoutController = new LogoutController($host, $dbUsername, $dbPassword, $database);
+    // Instantiate Database with session details
+    $database = new Database($host, $dbUsername, $dbPassword, $databaseName);
 
-// Handle login logic
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // Check if the username and password fields are set
-    if (isset($_POST["username"]) && isset($_POST["password"])) {
-        $username = $_POST["username"];
-        $password = $_POST["password"];
+    // Instantiate UserModel with Database instance
+    $userModel = new UserModel($database);
 
-        // Authenticate user
-        if ($loginController->login($username, $password)) {
-            // Update user status to "online" in the database
-            $loginController->updateUserStatus($username, 'online');
-            session_start();
-            // Set session variable
-            $_SESSION['username'] = $username;
-            // Redirect user to the dashboard or another page upon successful login
-            header("Location: dashboard.php");
-            exit();
+    // Instantiate LoginController with UserModel instance
+    $loginController = new LoginController($userModel);
+    $logoutController = new LogoutController($database);
+
+    // Initialize error variables
+    $usernameError = '';
+    $passwordError = '';
+
+    // Handle login logic
+    if ($_SERVER["REQUEST_METHOD"] == "POST") {
+        // Check if the username and password fields are set
+        if (isset($_POST["username"]) && isset($_POST["password"])) {
+            $username = $_POST["username"];
+            $password = $_POST["password"];
+
+            // Authenticate user
+            if ($loginController->login($username, $password)) {
+                // Update user status to "online" in the database
+                $loginController->updateUserStatus($username, 'online');
+                // Set session variable
+                $_SESSION['username'] = $username;
+                // Redirect user to the dashboard or another page upon successful login
+                header("Location: dashboard.php");
+                exit();
+            } else {
+                // Set error message for invalid login credentials
+                $usernameError = "Invalid username or password. Please try again.";
+            }
         } else {
-            // Set username error message
-            $usernameError = "Invalid username or password. Please try again.";
+            // Handle case where username or password fields are not set
+            $usernameError = "Username and password fields are required.";
         }
-    } else {
-        // Handle case where username or password fields are not set
-        $usernameError = "Username and password fields are required.";
-    }
-}
-
-// Handle logout logic
-if (isset($_POST["logout"])) {
-    // Get username from session or any other method you're using to store it
-    $username = $_SESSION['username'] ?? null;
-
-    // If username exists, update user status to "offline" in the database
-    if ($username) {
-        $logoutController->updateUserStatus($username, 'offline');
     }
 
-    // Destroy the session and redirect to the login page
-    session_start();
-    session_destroy();
-    header("Location: login.php");
-    exit();
+    // Handle logout logic
+    if (isset($_POST["logout"])) {
+        // Get username from session
+        $username = $_SESSION['username'] ?? null;
+        if ($username) {
+            // Update user status to "offline" in the database
+            $logoutController->updateUserStatus($username, 'offline');
+        }
+        // Destroy the session and redirect to the login page
+        session_destroy();
+        header("Location: login.php");
+        exit();
+    }
+} else {
+    echo "Database connection details not set. Please run the installation script.";
 }
 ?>
+
+
 
 <!DOCTYPE html>
 <html lang="en">
